@@ -4,7 +4,12 @@
  *
  * This file is illustrative and not built by turbo (no Next.js peer dep here).
  */
-import { CHITMARK_HTTP_STATUS, Chitmark } from "@chitmark/sdk";
+import {
+  CHITMARK_HTTP_STATUS,
+  Chitmark,
+  getTrustedClientIp,
+  isEligibleAllow,
+} from "@chitmark/sdk";
 
 const chitmark = new Chitmark({
   apiKey: process.env.CHITMARK_API_KEY!,
@@ -18,7 +23,8 @@ export async function POST(req: Request): Promise<Response> {
     surface: "app.acme.com/signup",
     subject: {
       email: body.email,
-      ip: req.headers.get("x-forwarded-for") ?? "",
+      // Platform / trusted-proxy IP only. Do not read raw XFF on a public origin.
+      ip: getTrustedClientIp(req),
       userAgent: req.headers.get("user-agent") ?? "",
       headers: Object.fromEntries(req.headers),
       formData: body,
@@ -37,8 +43,15 @@ export async function POST(req: Request): Promise<Response> {
       { status: CHITMARK_HTTP_STATUS.forbidden },
     );
   }
+  if (!isEligibleAllow(v)) {
+    // Unknown / malformed decision: fail to challenge, never to allow.
+    return Response.json(
+      { challenge: true, eventId: v.eventId },
+      { status: CHITMARK_HTTP_STATUS.preconditionRequired },
+    );
+  }
 
-  // Explicit non-degraded allow: continue.
+  // Only an explicit non-degraded allow reaches here.
   // Store v.eventId on the account row NOW: feedback joins only on this id.
   const user = await createUser(body, {
     chitmarkEventId: v.eventId,

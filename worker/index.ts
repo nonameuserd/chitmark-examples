@@ -4,7 +4,7 @@
  *
  * This file is illustrative and not built by turbo (no Worker package here).
  */
-import { CHITMARK_HTTP_STATUS, Chitmark } from "@chitmark/sdk/edge";
+import { CHITMARK_HTTP_STATUS, Chitmark, isEligibleAllow } from "@chitmark/sdk/edge";
 
 interface Env {
   CHITMARK_API_KEY: string;
@@ -17,7 +17,7 @@ export default {
     }
 
     const chitmark = new Chitmark({ apiKey: env.CHITMARK_API_KEY });
-    // Reads cf-connecting-ip, user-agent, headers, and Web Bot Auth signatures.
+    // Reads cf-connecting-ip (then trusted XFF), user-agent, headers, and Web Bot Auth signatures.
     const v = await chitmark.verifyRequest(req, { action: "signup" });
 
     if (v.degraded || v.decision === "challenge") {
@@ -29,8 +29,15 @@ export default {
     if (v.decision === "deny") {
       return new Response("blocked", { status: CHITMARK_HTTP_STATUS.forbidden }); // 403
     }
+    if (!isEligibleAllow(v)) {
+      // Unknown / malformed decision: fail to challenge, never to allow.
+      return Response.json(
+        { challenge: true, eventId: v.eventId },
+        { status: CHITMARK_HTTP_STATUS.preconditionRequired },
+      );
+    }
 
-    // Explicit non-degraded allow: stamp the verdict for origin, then continue.
+    // Only an explicit non-degraded allow: stamp the verdict for origin, then continue.
     const fwd = new Request(req);
     fwd.headers.set("x-chitmark-principal", v.principal.onBehalfOf ?? "unknown");
     fwd.headers.set("x-chitmark-event", v.eventId);

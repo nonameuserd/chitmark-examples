@@ -75,6 +75,7 @@ async function reportCreditBurn(bucket: UsageBucket, eventId: string): Promise<v
         outcome: "credit_burn",
         value: bucket.creditsBurnedUsd,
         unit: "usd",
+        source: "usage_metering",
         observedAt: bucket.observedAt,
       });
       log.info("reported credit_burn label", {
