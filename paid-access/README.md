@@ -1,8 +1,19 @@
 # Buy a fixed-price API call
 
-Run with Node.js 24+. Configure a fixed-price resource and test payment account for
-the seller. The buyer workspace owner sets a seller-specific spending ceiling.
-Use the buyer agent's test key with `charge:buy` throughout the purchase.
+Run with Node.js 24+ and two Chitmark test workspaces. In each workspace, open
+**Dashboard → Attribution** and copy the **Workspace ID**. Replace the example IDs
+below with those values.
+
+| Variable                    | What to copy                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `CHITMARK_SELLER_TENANT_ID` | The workspace ID of the business offering the API call. This workspace owns the connected payment account and resource. |
+| `CHITMARK_BUYER_TENANT_ID`  | The workspace ID of the business funding the purchase. The example includes this ID in the operation digest.            |
+| `CHITMARK_API_KEY`          | A `ck_test_…` credential issued in the buyer workspace with `charge:buy`. It authenticates the buyer on each request.   |
+
+In the seller workspace, configure a test payment account and publish a fixed-price
+resource using `charge:configure`. Replace `weather_call` with the resource ID you
+configured. In the buyer workspace, use `charge:budget` to set the buyer's spending
+ceiling for this seller. Keep the seller's `charge:fulfill` key in the seller backend.
 
 ```sh
 export CHITMARK_SELLER_TENANT_ID=org_your_seller
